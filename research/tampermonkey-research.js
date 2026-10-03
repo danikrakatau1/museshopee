@@ -53,9 +53,9 @@
       const sm = text.match(/([\d.,]+\s*(?:RB|JT)?\+?)\s*terjual/i);
       if (sm) terjual = parseIDN(sm[1]);
 
-      // Rating: format Indonesia koma desimal, mis. "4,9"
+      // Rating: "4,9" atau "4.9" (koma atau titik desimal)
       let rating = null;
-      const rm = text.match(/(\d,\d)/);
+      const rm = text.match(/(\d[,.]\d)/);
       if (rm) rating = parseFloat(rm[1].replace(',', '.'));
 
       seen.set(itemid, { nama, harga, terjual, rating, itemid, shopid });
