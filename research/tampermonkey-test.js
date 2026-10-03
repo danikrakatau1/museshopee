@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         MuseShopee Research Test
 // @namespace    museshopee
-// @version      0.1
-// @description  TEST: tangkap data produk dari halaman pencarian Shopee (read-only, tanpa klik otomatis)
+// @version      0.2
+// @description  TEST v2: tangkap data produk dari halaman pencarian Shopee + diagnosis struktur
 // @match        https://shopee.co.id/*
 // @grant        none
 // @run-at       document-start
@@ -13,27 +13,32 @@
 
   const captured = [];
 
+  function unwrap(w) {
+    if (!w || typeof w !== 'object') return w;
+    return w.item_basic || w.data || w;
+  }
+
   function handlePayload(url, data) {
     try {
       console.log('[museshopee] respons tertangkap dari:', url);
-      console.log('[museshopee] struktur data:', Object.keys(data || {}));
-
-      // Coba beberapa bentuk struktur respons yang umum
       let items = [];
-      if (Array.isArray(data.items)) {
-        items = data.items.map((w) => w.item_basic || w);
-      } else if (data.data && Array.isArray(data.data.items)) {
-        items = data.data.items.map((w) => w.item_basic || w);
+      if (Array.isArray(data)) {
+        // Kasus kemarin: respons top-level berupa Array
+        console.log('[museshopee] top-level adalah Array(' + data.length + '), pakai langsung');
+        items = data.map(unwrap);
+      } else if (data && typeof data === 'object') {
+        console.log('[museshopee] struktur data:', Object.keys(data));
+        if (Array.isArray(data.items)) {
+          items = data.items.map(unwrap);
+        } else if (data.data && Array.isArray(data.data.items)) {
+          items = data.data.items.map(unwrap);
+        }
       }
-
-      console.log('[museshopee] jumlah item:', items.length);
+      console.log('[museshopee] jumlah item respons ini:', items.length);
       if (items.length > 0) {
-        console.log('[museshopee] contoh 1 item (mentah):', items[0]);
         captured.push(...items);
         console.log('[museshopee] total terkumpul:', captured.length, 'produk');
-        console.log('[museshopee] jalankan __museshopee.ringkas() untuk versi ringkasnya');
-      } else {
-        console.log('[museshopee] bentuk respons tidak dikenali, lihat struktur di atas lalu laporkan ke Muse');
+        console.log('[museshopee] jalankan __museshopee.contoh() untuk lihat struktur 1 item');
       }
     } catch (e) {
       console.log('[museshopee] gagal parse:', e);
@@ -53,20 +58,41 @@
     return res;
   };
 
+  function pick(obj, candidates) {
+    for (const k of candidates) {
+      if (obj && obj[k] !== undefined && obj[k] !== null) return obj[k];
+    }
+    return undefined;
+  }
+
   window.__museshopee = {
-    // Versi ringkas: nama, harga (Rp), terjual, rating
+    // Diagnosis: tampilkan keys + potongan mentah 1 item pertama
+    contoh: function () {
+      const i = captured[0];
+      if (!i) { console.log('[museshopee] belum ada data — scroll halaman pencarian dulu'); return; }
+      console.log('[museshopee] keys item:', Object.keys(i));
+      const raw = JSON.stringify(i);
+      console.log('[museshopee] mentah (2000 karakter pertama):', raw.slice(0, 2000));
+      return i;
+    },
+    // Versi ringkas dengan banyak kandidat nama field
     ringkas: function () {
-      const out = captured.map((i) => ({
-        nama: i.name,
-        harga: i.price ? Math.round(i.price / 100000) : (i.price_min ? Math.round(i.price_min / 100000) : null),
-        terjual: i.sold != null ? i.sold : i.historical_sold,
-        rating: i.item_rating ? i.item_rating.rating_star : i.rating_star,
-        toko: (i.shop_info && i.shop_info.shop_name) || null,
-      }));
+      const out = captured.map((i) => {
+        const priceRaw = pick(i, ['price_min', 'price', 'current_price', 'show_price']);
+        const ratingObj = i.item_rating || {};
+        return {
+          nama: pick(i, ['name', 'item_name', 'title']),
+          harga: typeof priceRaw === 'number' ? Math.round(priceRaw / 100000) : priceRaw,
+          terjual: pick(i, ['sold', 'historical_sold', 'sold_count']),
+          rating: pick(ratingObj, ['rating_star']) !== undefined
+            ? ratingObj.rating_star
+            : pick(i, ['rating_star', 'rating']),
+          toko: pick(i, ['shop_name']) || (i.shop_info && i.shop_info.shop_name) || null,
+        };
+      });
       console.table(out);
       return out;
     },
-    // Unduh semua data mentah sebagai JSON
     download: function () {
       const blob = new Blob([JSON.stringify(captured, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
@@ -77,5 +103,5 @@
     jumlah: function () { return captured.length; },
   };
 
-  console.log('%c[museshopee] script aktif. Buka halaman pencarian Shopee, lalu cek console ini.', 'color: green; font-weight: bold');
+  console.log('%c[museshopee] v0.2 aktif. Buka halaman pencarian Shopee, scroll, lalu jalankan __museshopee.contoh()', 'color: green; font-weight: bold');
 })();
