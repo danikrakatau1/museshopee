@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         MuseShopee Research Test
 // @namespace    museshopee
-// @version      0.4
-// @description  TEST v4: diagnosis mendalam struktur item
+// @version      0.5
+// @description  TEST v5: pakai display fields + bedah item_data untuk terjual/rating
 // @match        https://shopee.co.id/*
 // @grant        none
 // @run-at       document-start
@@ -12,23 +12,6 @@
   'use strict';
 
   const captured = [];
-  let lastWrapper = null;
-
-  function unwrap(w) {
-    if (!w || typeof w !== 'object') return { item: w, isAd: false, how: ' mentah' };
-    const isAd = w.adsid != null || w.campaignid != null;
-    if (w.item_basic) return { item: w.item_basic, isAd, how: 'item_basic langsung' };
-    if (typeof w.json_data === 'string' && w.json_data.length > 2) {
-      try {
-        const j = JSON.parse(w.json_data);
-        const inner = j.item_basic || j.data || j;
-        if (inner && (inner.name || inner.itemid)) {
-          return { item: inner, isAd, how: 'json_data -> ' + Object.keys(j).slice(0, 8).join(',') };
-        }
-      } catch (e) { /* bukan JSON */ }
-    }
-    return { item: w.data || w, isAd, how: 'fallback wrapper' };
-  }
 
   function handlePayload(url, data) {
     try {
@@ -38,9 +21,11 @@
         if (Array.isArray(data.items)) raws = data.items;
         else if (data.data && Array.isArray(data.data.items)) raws = data.data.items;
       }
-      if (raws.length && !lastWrapper) lastWrapper = raws[0];
-      const items = raws.map(unwrap).filter((x) => x.item && (x.item.name || x.item.itemid));
-      if (items.length) captured.push(...items);
+      // simpan wrapper apa adanya + tandai iklan
+      for (const w of raws) {
+        if (!w || typeof w !== 'object') continue;
+        captured.push({ w, isAd: w.adsid != null || w.campaignid != null });
+      }
     } catch (e) { /* abaikan */ }
   }
 
@@ -57,34 +42,69 @@
     return res;
   };
 
+  function parsePrice(p) {
+    if (p == null) return null;
+    if (typeof p === 'number') return p > 10000 ? Math.round(p / 100000) : p;
+    if (typeof p === 'string') {
+      const n = parseInt(p.replace(/[^0-9]/g, ''), 10);
+      return isNaN(n) ? p : n;
+    }
+    if (typeof p === 'object') {
+      const v = p.price || p.text || p.display || p.value;
+      return parsePrice(v);
+    }
+    return null;
+  }
+
+  function findIn(obj, re) {
+    if (!obj || typeof obj !== 'object') return undefined;
+    for (const k of Object.keys(obj)) {
+      if (re.test(k)) return obj[k];
+    }
+    return undefined;
+  }
+
+  function toProduct(x) {
+    const w = x.w;
+    const idata = w.item_data && typeof w.item_data === 'object' ? w.item_data : null;
+    return {
+      nama: (w.display_name || (Array.isArray(w.title_max_lines) ? w.title_max_lines.join(' ') : w.title_max_lines) || '').slice(0, 50),
+      harga: parsePrice(w.item_card_price),
+      terjual: findIn(idata, /sold/i) ?? findIn(w, /sold/i) ?? null,
+      rating: findIn(idata, /rating_star/i) ?? null,
+      iklan: x.isAd ? 'YA' : '-',
+    };
+  }
+
   window.__museshopee = {
-    // Diagnosis lengkap: dari wrapper sampai item akhir
+    ringkas: function () {
+      const out = captured.map(toProduct);
+      console.table(out);
+      return out;
+    },
+    // Bedah satu item ORGANIK: fokus ke item_data
     contoh: function () {
-      const w = lastWrapper;
-      if (!w) { console.log('[museshopee] belum ada data — reload + scroll dulu'); return; }
-      console.log('=== WRAPPER keys ===');
-      console.log(Object.keys(w).join(', '));
-      console.log('=== json_data (100 karakter pertama) ===');
-      console.log(String(w.json_data || '(kosong)').slice(0, 100));
-      let parsed = null;
-      try { parsed = JSON.parse(w.json_data); } catch (e) { console.log('json_data BUKAN JSON valid'); }
-      if (parsed) {
-        console.log('=== hasil parse json_data, keys ===');
-        console.log(Object.keys(parsed).join(', '));
+      const x = captured.find((c) => !c.isAd) || captured[0];
+      if (!x) { console.log('[museshopee] belum ada data'); return; }
+      const w = x.w;
+      console.log('=== display_name ===', w.display_name);
+      console.log('=== title_max_lines ===', w.title_max_lines);
+      console.log('=== item_card_price (mentah) ===', JSON.stringify(w.item_card_price));
+      const id = w.item_data;
+      console.log('=== item_data tipe ===', id === null ? 'null' : typeof id);
+      if (typeof id === 'string') {
+        console.log('=== item_data string (300 pertama) ===', id.slice(0, 300));
+      } else if (id && typeof id === 'object') {
+        const keys = Object.keys(id);
+        console.log('=== item_data keys ===', keys.join(', '));
+        console.log('=== kandidat sold di item_data ===', keys.filter((k) => /sold/i.test(k)));
+        console.log('=== kandidat rating di item_data ===', keys.filter((k) => /rating/i.test(k)));
       }
-      const u = unwrap(w);
-      console.log('=== cara unwrap: ' + u.how + ' ===');
-      console.log('=== ITEM AKHIR keys ===');
-      console.log(Object.keys(u.item || {}).join(', '));
-      // cari kandidat nama/harga
-      const keys = Object.keys(u.item || {});
-      console.log('=== kandidat nama ===', keys.filter((k) => /name|title/i.test(k)));
-      console.log('=== kandidat harga ===', keys.filter((k) => /price/i.test(k)));
-      console.log('=== kandidat terjual ===', keys.filter((k) => /sold/i.test(k)));
-      return u.item;
+      console.log('=== hasil toProduct ===', toProduct(x));
+      return x;
     },
     jumlah: function () { return captured.length; },
   };
 
-  console.log('%c[museshopee] v0.4 aktif. Reload + scroll, lalu __museshopee.contoh()', 'color: green; font-weight: bold');
+  console.log('%c[museshopee] v0.5 aktif. Reload + scroll, lalu __museshopee.contoh()', 'color: green; font-weight: bold');
 })();
