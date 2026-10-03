@@ -3,18 +3,148 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>museshopee</title>
-  <style>
-    body { font-family: system-ui, sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #0f172a; color: #e2e8f0; }
-    main { text-align: center; }
-    h1 { font-size: 2.5rem; margin-bottom: .5rem; }
-    p { color: #94a3b8; }
-  </style>
+  <title>museshopee — Kalkulator & Riset Seller Shopee</title>
+  <meta name="description" content="Kalkulator ROAS, margin, harga jual ideal, diskon, fee Shopee, BEP, dan riset produk untuk seller Shopee." />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <header class="topbar">
+    <div class="brand" data-nav="beranda">🛒 museshopee</div>
+    <nav class="nav" id="nav">
+      <button data-nav="beranda" class="active">Beranda</button>
+      <button data-nav="hj">Harga Ideal</button>
+      <button data-nav="margin">Margin</button>
+      <button data-nav="roas">ROAS</button>
+      <button data-nav="diskon">Diskon</button>
+      <button data-nav="fee">Fee Shopee</button>
+      <button data-nav="bep">BEP</button>
+      <button data-nav="riset">Riset Produk</button>
+    </nav>
+  </header>
+
   <main>
-    <h1>museshopee</h1>
-    <p>Segera hadir — deploy otomatis via Cloudflare Pages sudah aktif.</p>
+    <!-- BERANDA -->
+    <section id="beranda" class="page active">
+      <div class="hero">
+        <h1>Kalkulator & Riset untuk Seller Shopee</h1>
+        <p>Hitung harga ideal, margin, ROAS, diskon, fee, dan BEP — plus riset produk dari data pencarian asli. Tanpa login, tanpa simpan data.</p>
+      </div>
+      <div class="grid">
+        <button class="card" data-nav="hj"><span class="ico">💰</span><b>Harga Jual Ideal</b><small>Dari HPP + target margin</small></button>
+        <button class="card" data-nav="margin"><span class="ico">📊</span><b>Margin / Laba</b><small>Bedah keuntungan per pcs</small></button>
+        <button class="card" data-nav="roas"><span class="ico">📈</span><b>Kalkulator ROAS</b><small>Iklan boncos atau cuan?</small></button>
+        <button class="card" data-nav="diskon"><span class="ico">🏷️</span><b>Diskon & Voucher</b><small>Simulasi promo aman</small></button>
+        <button class="card" data-nav="fee"><span class="ico">🧾</span><b>Fee Shopee</b><small>Estimasi potongan admin</small></button>
+        <button class="card" data-nav="bep"><span class="ico">🎯</span><b>BEP Unit</b><small>Berapa pcs biar impas?</small></button>
+        <button class="card" data-nav="riset"><span class="ico">🔍</span><b>Riset Produk</b><small>Skor opportunity pasar</small></button>
+      </div>
+      <p class="note">Angka fee & tarif bersifat estimasi — selalu cek tarif terkini di Seller Centre Shopee untuk akunmu.</p>
+    </section>
+
+    <!-- HARGA JUAL IDEAL -->
+    <section id="hj" class="page">
+      <h2>💰 Harga Jual Ideal</h2>
+      <p class="desc">Hitung mundur dari HPP + target margin yang kamu mau.</p>
+      <div class="form">
+        <label>HPP / Modal per pcs (Rp)<input id="hj-hpp" type="number" min="0" placeholder="mis. 35000"></label>
+        <label>Target margin (% dari harga jual)<input id="hj-margin" type="number" min="0" max="95" placeholder="mis. 30"></label>
+        <label>Fee Shopee (%)<input id="hj-fee" type="number" min="0" max="50" value="10"></label>
+        <label>Biaya lain per pcs (Rp, opsional)<input id="hj-lain" type="number" min="0" value="0" placeholder="packing, voucher..."></label>
+        <button class="btn" onclick="calcHJ()">Hitung</button>
+      </div>
+      <div class="result" id="hj-out"><span class="placeholder">Isi form lalu klik Hitung.</span></div>
+    </section>
+
+    <!-- MARGIN -->
+    <section id="margin" class="page">
+      <h2>📊 Margin / Laba per Pcs</h2>
+      <p class="desc">Bedah satu produk yang sudah jalan: masih cuan atau sudah tipis?</p>
+      <div class="form">
+        <label>Harga jual (Rp)<input id="mg-hj" type="number" min="0" placeholder="mis. 86000"></label>
+        <label>HPP / Modal per pcs (Rp)<input id="mg-hpp" type="number" min="0" placeholder="mis. 35000"></label>
+        <label>Fee Shopee (%)<input id="mg-fee" type="number" min="0" max="50" value="10"></label>
+        <label>Biaya iklan per pcs (Rp, opsional)<input id="mg-iklan" type="number" min="0" value="0"></label>
+        <label>Biaya lain per pcs (Rp, opsional)<input id="mg-lain" type="number" min="0" value="0"></label>
+        <button class="btn" onclick="calcMargin()">Hitung</button>
+      </div>
+      <div class="result" id="mg-out"><span class="placeholder">Isi form lalu klik Hitung.</span></div>
+    </section>
+
+    <!-- ROAS -->
+    <section id="roas" class="page">
+      <h2>📈 Kalkulator ROAS</h2>
+      <p class="desc">ROAS = Omzet dari iklan ÷ Biaya iklan. Bandingkan dengan BEP ROAS-mu.</p>
+      <div class="form">
+        <label>Biaya iklan (Rp)<input id="ro-biaya" type="number" min="0" placeholder="mis. 500000"></label>
+        <label>Omzet dari iklan (Rp)<input id="ro-omzet" type="number" min="0" placeholder="mis. 2500000"></label>
+        <label>Margin produk % (opsional, untuk BEP)<input id="ro-margin" type="number" min="0" max="95" placeholder="mis. 25"></label>
+        <button class="btn" onclick="calcROAS()">Hitung</button>
+      </div>
+      <div class="result" id="ro-out"><span class="placeholder">Isi form lalu klik Hitung.</span></div>
+    </section>
+
+    <!-- DISKON -->
+    <section id="diskon" class="page">
+      <h2>🏷️ Simulasi Diskon & Voucher</h2>
+      <p class="desc">Cek dulu sebelum pasang promo — jangan sampai margin minus.</p>
+      <div class="form">
+        <label>Harga normal (Rp)<input id="dk-hj" type="number" min="0" placeholder="mis. 100000"></label>
+        <label>Diskon (%)<input id="dk-disc" type="number" min="0" max="100" value="0"></label>
+        <label>Voucher toko ditanggung seller (Rp)<input id="dk-voucher" type="number" min="0" value="0"></label>
+        <label>HPP per pcs (Rp)<input id="dk-hpp" type="number" min="0" placeholder="mis. 40000"></label>
+        <label>Fee Shopee (%)<input id="dk-fee" type="number" min="0" max="50" value="10"></label>
+        <button class="btn" onclick="calcDiskon()">Hitung</button>
+      </div>
+      <div class="result" id="dk-out"><span class="placeholder">Isi form lalu klik Hitung.</span></div>
+    </section>
+
+    <!-- FEE -->
+    <section id="fee" class="page">
+      <h2>🧾 Estimasi Fee Shopee</h2>
+      <p class="desc">Simulasi potongan admin. Tarif berubah-ubah — sesuaikan % dengan tarif akunmu di Seller Centre.</p>
+      <div class="form">
+        <label>Harga jual (Rp)<input id="fe-hj" type="number" min="0" placeholder="mis. 86000"></label>
+        <label>Fee Shopee (%)<input id="fe-pct" type="number" min="0" max="50" value="10"></label>
+        <label>Biaya tetap per order (Rp, opsional)<input id="fe-tetap" type="number" min="0" value="0" placeholder="mis. ongkir ditanggung"></label>
+        <button class="btn" onclick="calcFee()">Hitung</button>
+      </div>
+      <div class="result" id="fe-out"><span class="placeholder">Isi form lalu klik Hitung.</span></div>
+    </section>
+
+    <!-- BEP -->
+    <section id="bep" class="page">
+      <h2>🎯 BEP (Titik Impas)</h2>
+      <p class="desc">Berapa pcs harus laku per bulan supaya biaya tetap ketutup?</p>
+      <div class="form">
+        <label>Biaya tetap per bulan (Rp)<input id="be-tetap" type="number" min="0" placeholder="gaji, sewa, listrik..."></label>
+        <label>Margin kontribusi per pcs (Rp)<input id="be-margin" type="number" min="0" placeholder="harga − HPP − fee variabel"></label>
+        <button class="btn" onclick="calcBEP()">Hitung</button>
+      </div>
+      <div class="result" id="be-out"><span class="placeholder">Isi form lalu klik Hitung.</span></div>
+    </section>
+
+    <!-- RISET -->
+    <section id="riset" class="page">
+      <h2>🔍 Riset Produk</h2>
+      <p class="desc">Impor data dari userscript (<code>research/tampermonkey-research.js</code> → tombol <i>download</i>), lalu lihat skor opportunity tiap produk.</p>
+      <div class="form">
+        <label>Upload file JSON hasil userscript<input id="rs-file" type="file" accept=".json,application/json"></label>
+        <label>…atau tempel JSON di sini<textarea id="rs-paste" rows="4" placeholder='[{"nama":"...","harga":86000,"terjual":1000,...}]'></textarea></label>
+        <button class="btn" onclick="importRiset()">Proses Data</button>
+      </div>
+      <div class="result" id="rs-summary"></div>
+      <div class="table-wrap"><table id="rs-table" hidden>
+        <thead><tr>
+          <th data-k="skor">Skor ⬍</th><th data-k="nama">Produk</th><th data-k="harga">Harga</th>
+          <th data-k="terjual">Terjual</th><th data-k="rating">Rating</th><th data-k="omzet">Est. Omzet</th><th data-k="iklan">Iklan</th>
+        </tr></thead>
+        <tbody id="rs-body"></tbody>
+      </table></div>
+      <p class="note">Skor opportunity = 65% bobot permintaan (log terjual) + 35% bobot kompetisi lemah (rating rendah). Makin tinggi makin menarik untuk digarap.</p>
+    </section>
   </main>
+
+  <footer>museshopee · alat bantu seller Shopee · data tidak disimpan di server</footer>
+  <script src="app.js"></script>
 </body>
 </html>
